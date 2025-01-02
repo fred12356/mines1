@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinesV1 Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            width: 350px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        label, p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        input {
+            padding: 8px;
+            margin: 10px 0;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            width: 100%;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:disabled {
+            background-color: #ddd;
+            cursor: not-allowed;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            grid-gap: 2px; /* Even smaller gap to make the grid tighter */
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .grid button {
+            width: 50px;
+            height: 50px;
+            font-size: 14px;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            transition: background-color 0.3s ease;
+        }
+        .grid button:hover {
+            background-color: #ddd;
+        }
+        .safe {
+            background-color: green;
+            color: white;
+        }
+        .mine {
+            background-color: red;
+            color: white;
+        }
+        #cashout-label {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>MinesV1</h1>
+        <label for="balance">Balance: $<span id="balance">1000</span></label><br><br>
+        <label for="bet">Bet Amount:</label>
+        <input type="number" id="bet" value="0"><br><br>
+
+        <label for="mines">Number of Mines (1-10):</label>
+        <input type="number" id="mines" value="1" min="1" max="10"><br><br>
+
+        <button onclick="startGame()">Start Game</button>
+        <p id="cashout-label">Potential Cashout: $0</p>
+        <button id="cashout-btn" onclick="cashOut()" disabled>Cashout</button>
+
+        <div class="grid" id="game-grid"></div>
+    </div>
+
+    <script>
+        let balance = 1000;
+        let originalBalance = 1000; // Track the original balance
+        let betAmount = 0;
+        let multiplier = 1.7;
+        let minesCount = 0;
+        let mines = [];
+        let clickedPositions = [];
+        let gridSize = 5;
+
+        function startGame() {
+            betAmount = parseInt(document.getElementById('bet').value);
+            minesCount = parseInt(document.getElementById('mines').value);
+
+            if (betAmount <= 0 || betAmount > balance) {
+                alert("Invalid bet amount.");
+                return;
+            }
+
+            if (minesCount < 1 || minesCount > 10) {
+                alert("Number of mines must be between 1 and 10.");
+                return;
+            }
+
+            originalBalance = balance; // Set the original balance when a new game starts
+            balance -= betAmount;
+            updateBalanceLabel();
+
+            mines = generateMines(minesCount);
+            clickedPositions = [];
+            document.getElementById('cashout-btn').disabled = false;
+            updateCashoutLabel();
+
+            createGrid();
+        }
+
+        function generateMines(count) {
+            let positions = [];
+            while (positions.length < count) {
+                let position = Math.floor(Math.random() * (gridSize * gridSize));
+                if (!positions.includes(position)) {
+                    positions.push(position);
+                }
+            }
+            return positions;
+        }
+
+        function createGrid() {
+            const gridContainer = document.getElementById('game-grid');
+            gridContainer.innerHTML = ''; // Clear previous grid
+
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const button = document.createElement('button');
+                    button.onclick = () => cellClick(row, col);
+                    gridContainer.appendChild(button);
+                }
+            }
+        }
+
+        function cellClick(row, col) {
+            const position = row * gridSize + col;
+
+            if (clickedPositions.includes(position)) {
+                return;
+            }
+
+            clickedPositions.push(position);
+
+            const button = document.getElementById('game-grid').children[position];
+            if (mines.includes(position)) {
+                button.textContent = "Mine";
+                button.classList.add('mine');
+                balance = originalBalance; // Reset the balance to original if you hit a mine
+                document.getElementById('cashout-btn').disabled = true;
+                alert("Game Over! You clicked on a mine!");
+                updateBalanceLabel();
+                updateCashoutLabel();
+                createGrid();
+            } else {
+                button.textContent = "Safe";
+                button.classList.add('safe');
+                button.disabled = true;
+                button.style.backgroundColor = 'green'; // Change to green color immediately
+                betAmount = Math.round(betAmount * multiplier * 100) / 100; // Update bet amount with multiplier
+                updateCashoutLabel();
+            }
+        }
+
+        function cashOut() {
+            balance += betAmount; // Add bet amount to balance on cashout
+            betAmount = 0;
+            document.getElementById('cashout-btn').disabled = true;
+            updateBalanceLabel();
+            updateCashoutLabel();
+            alert("You cashed out! New Balance: $" + balance);
+            createGrid();
+        }
+
+        function updateBalanceLabel() {
+            document.getElementById('balance').textContent = balance;
+        }
+
+        function updateCashoutLabel() {
+            document.getElementById('cashout-label').textContent = "Potential Cashout: $" + betAmount;
+        }
+    </script>
+
+</body>
+</html>
